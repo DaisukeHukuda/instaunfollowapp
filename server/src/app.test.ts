@@ -120,3 +120,67 @@ describe('PATCH /api/accounts/:username', () => {
     expect(missing.status).toBe(404);
   });
 });
+
+describe('queue', () => {
+  it('POST /api/queue/bulk で複数アカウントをキューに入れ、?queued=true で取れる', async () => {
+    await importSample();
+    const res = await app.request('/api/queue/bulk', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ usernames: ['oneway_c', 'fan_b'], queued: true }),
+    });
+    expect(res.status).toBe(200);
+    expect((await res.json()).updated).toBe(2);
+    const q = await (await app.request('/api/accounts?queued=true')).json();
+    expect(q.accounts.map((a: { username: string }) => a.username).sort()).toEqual(['fan_b', 'oneway_c']);
+    expect(q.counts.queued).toBe(2);
+  });
+
+  it('PATCH で status と queued を同時更新できる（キュー消化の1操作）', async () => {
+    await importSample();
+    await app.request('/api/queue/bulk', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ usernames: ['oneway_c'], queued: true }),
+    });
+    const res = await app.request('/api/accounts/oneway_c', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ status: 'unfollowed', queued: false }),
+    });
+    expect(res.status).toBe(200);
+    const { account } = await res.json();
+    expect(account.status).toBe('unfollowed');
+    expect(account.queued).toBe(false);
+  });
+
+  it('queued だけの PATCH も可能', async () => {
+    await importSample();
+    const res = await app.request('/api/accounts/fan_b', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ queued: true }),
+    });
+    expect(res.status).toBe(200);
+    expect((await res.json()).account.queued).toBe(true);
+  });
+
+  it('queue/bulk の入力不正は400', async () => {
+    const res = await app.request('/api/queue/bulk', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ usernames: 'x' }),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('PATCH で本文が空なら400', async () => {
+    await importSample();
+    const res = await app.request('/api/accounts/oneway_c', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(400);
+  });
+});
