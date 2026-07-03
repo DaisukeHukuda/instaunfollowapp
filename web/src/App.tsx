@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import ListView from './ListView';
 
 type View = 'list' | 'import';
 
@@ -17,7 +18,7 @@ export default function App() {
           </button>
         </nav>
       </header>
-      <main>{view === 'list' ? <p>一覧（Task 7 で実装）</p> : <p>取り込み（Task 8 で実装）</p>}</main>
+      <main>{view === 'list' ? <ListView /> : <p>取り込み（Task 8 で実装）</p>}</main>
     </div>
   );
 }
