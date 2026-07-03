@@ -10,10 +10,27 @@ interface RawStringListItem {
 }
 
 interface RawEntry {
+  title?: string;
   string_list_data?: RawStringListItem[];
 }
 
-/** 素の配列 / { キー: 配列 } のオブジェクト包み、どちらの形式にも対応 */
+/** href（https://www.instagram.com/xxx や .../_u/xxx）の末尾パスをユーザー名として取り出す */
+function usernameFromHref(href: string | undefined): string | null {
+  if (!href) return null;
+  try {
+    const segments = new URL(href).pathname.split('/').filter(Boolean);
+    const last = segments[segments.length - 1];
+    return last && last !== '_u' ? last : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 素の配列 / { キー: 配列 } のオブジェクト包み、どちらの形式にも対応。
+ * ユーザー名の場所もエクスポート時期・ファイルにより揺れる:
+ * followers系は string_list_data[].value、following系は項目の title（valueなし）に入る。
+ */
 function extractEntries(json: unknown): ExportEntry[] {
   const arr: RawEntry[] = Array.isArray(json)
     ? (json as RawEntry[])
@@ -23,10 +40,11 @@ function extractEntries(json: unknown): ExportEntry[] {
   const entries: ExportEntry[] = [];
   for (const item of arr) {
     for (const s of item.string_list_data ?? []) {
-      if (!s.value) continue;
+      const username = s.value ?? (item.title || null) ?? usernameFromHref(s.href);
+      if (!username) continue;
       entries.push({
-        username: s.value,
-        href: s.href ?? `https://www.instagram.com/${s.value}/`,
+        username,
+        href: s.href ?? `https://www.instagram.com/${username}/`,
         timestamp: s.timestamp ?? null,
       });
     }

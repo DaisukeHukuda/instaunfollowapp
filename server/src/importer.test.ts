@@ -45,6 +45,31 @@ describe('parseExportZip', () => {
     const zip = makeZip({ 'unrelated.json': [] });
     expect(() => parseExportZip(zip)).toThrow(ImportError);
   });
+
+  it('value欠落時は title や href からユーザー名を補完する（実エクスポートのfollowing形式）', () => {
+    const zip = makeZip({
+      'connections/followers_and_following/followers_1.json': [igEntry('a')],
+      'connections/followers_and_following/following.json': {
+        relationships_following: [
+          {
+            title: 'from_title',
+            string_list_data: [
+              { href: 'https://www.instagram.com/_u/from_title', timestamp: 1780000000 },
+            ],
+          },
+          {
+            title: '',
+            string_list_data: [
+              { href: 'https://www.instagram.com/from_href', timestamp: 1780000001 },
+            ],
+          },
+        ],
+      },
+    });
+    const { following } = parseExportZip(zip);
+    expect(following.map((e) => e.username)).toEqual(['from_title', 'from_href']);
+    expect(following[0].timestamp).toBe(1780000000);
+  });
 });
 
 describe('mergeAccounts', () => {
