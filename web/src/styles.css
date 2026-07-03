@@ -42,3 +42,10 @@ input[type='search'] { flex: 1; min-width: 160px; }
 .card-actions button, .btn { font-size: 13px; padding: 6px 10px; border-radius: 6px; background: var(--panel); border: 1px solid var(--border); color: var(--text); text-decoration: none; cursor: pointer; }
 .error { color: #ff7a7a; }
 .empty { color: var(--muted); }
+
+.import-view { max-width: 640px; }
+.guide { color: var(--muted); font-size: 14px; line-height: 1.9; padding-left: 20px; }
+.dropzone { border: 2px dashed var(--border); border-radius: 12px; padding: 48px 16px; text-align: center; color: var(--muted); cursor: pointer; margin: 16px 0; }
+.dropzone.dragging, .dropzone:hover { border-color: var(--accent); color: var(--text); }
+.import-summary { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+.import-summary h3 { margin-top: 0; }
