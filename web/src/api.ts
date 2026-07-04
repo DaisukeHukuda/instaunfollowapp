@@ -11,6 +11,7 @@ export function fetchAccounts(params: {
   status?: string;
   q?: string;
   sort?: string;
+  queued?: string;
 }): Promise<AccountsResponse> {
   const qs = new URLSearchParams(
     Object.entries(params).filter(([, v]) => v) as [string, string][],
@@ -18,14 +19,27 @@ export function fetchAccounts(params: {
   return fetch(`/api/accounts?${qs}`).then((r) => handle<AccountsResponse>(r));
 }
 
-export function updateStatus(username: string, status: AccountStatus): Promise<Account> {
+export function updateAccount(
+  username: string,
+  patch: { status?: AccountStatus; queued?: boolean },
+): Promise<Account> {
   return fetch(`/api/accounts/${encodeURIComponent(username)}`, {
     method: 'PATCH',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ status }),
+    body: JSON.stringify(patch),
   })
     .then((r) => handle<{ account: Account }>(r))
     .then((b) => b.account);
+}
+
+export function bulkQueue(usernames: string[], queued: boolean): Promise<number> {
+  return fetch('/api/queue/bulk', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ usernames, queued }),
+  })
+    .then((r) => handle<{ updated: number }>(r))
+    .then((b) => b.updated);
 }
 
 export function importZip(file: File): Promise<ImportSummary> {

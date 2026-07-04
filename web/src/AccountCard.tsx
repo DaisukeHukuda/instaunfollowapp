@@ -18,15 +18,23 @@ const fmtDate = (iso: string | null): string =>
 
 interface Props {
   account: Account;
+  selected: boolean;
+  onToggleSelect: (username: string) => void;
   onStatusChange: (username: string, status: AccountStatus) => void;
 }
 
-export default function AccountCard({ account, onStatusChange }: Props) {
+export default function AccountCard({ account, selected, onToggleSelect, onStatusChange }: Props) {
   const { username, relationship, status, profile } = account;
   const name = profile?.displayName || username;
   return (
     <div className={`card status-${status}`}>
       <div className="card-head">
+        <input
+          type="checkbox"
+          className="select-box"
+          checked={selected}
+          onChange={() => onToggleSelect(username)}
+        />
         {profile?.picPath ? (
           <img className="avatar" src={profile.picPath} alt="" />
         ) : (
@@ -39,6 +47,7 @@ export default function AccountCard({ account, onStatusChange }: Props) {
           {profile?.displayName && <div className="display-name">{name}</div>}
         </div>
         <span className={`badge badge-${relationship}`}>{REL_LABEL[relationship]}</span>
+        {account.queued && <span className="badge badge-queued">キュー</span>}
       </div>
       {profile?.bio && <p className="bio">{profile.bio}</p>}
       <div className="card-meta">

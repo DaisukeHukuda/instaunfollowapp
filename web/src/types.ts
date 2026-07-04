@@ -28,6 +28,7 @@ export interface Counts {
   followingOnly: number;
   followerOnly: number;
   pending: number;
+  queued: number;
 }
 
 export interface AccountsResponse {

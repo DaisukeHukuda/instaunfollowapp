@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import AccountCard from './AccountCard';
-import { fetchAccounts, updateStatus } from './api';
+import { bulkQueue, fetchAccounts, updateAccount } from './api';
 import type { AccountsResponse, AccountStatus } from './types';
 
 const REL_TABS = [
@@ -31,6 +31,7 @@ export default function ListView() {
   const [sort, setSort] = useState('');
   const [data, setData] = useState<AccountsResponse | null>(null);
   const [error, setError] = useState('');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const reload = useCallback(() => {
     fetchAccounts({ relationship, status, q, sort })
@@ -46,7 +47,30 @@ export default function ListView() {
   }, [reload]);
 
   const onStatusChange = (username: string, newStatus: AccountStatus) => {
-    updateStatus(username, newStatus).then(reload).catch((e: Error) => setError(e.message));
+    updateAccount(username, { status: newStatus })
+      .then(reload)
+      .catch((e: Error) => setError(e.message));
+  };
+
+  const toggleSelect = (username: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(username)) {
+        next.delete(username);
+      } else {
+        next.add(username);
+      }
+      return next;
+    });
+  };
+
+  const enqueue = (usernames: string[]) => {
+    bulkQueue(usernames, true)
+      .then(() => {
+        setSelected(new Set());
+        reload();
+      })
+      .catch((e: Error) => setError(e.message));
   };
 
   if (error) return <p className="error">{error}</p>;
@@ -92,6 +116,20 @@ export default function ListView() {
           onChange={(e) => setQ(e.target.value)}
         />
       </div>
+      <div className="bulkbar">
+        <span>選択中 {selected.size} 件</span>
+        <button disabled={selected.size === 0} onClick={() => enqueue([...selected])}>
+          選択をキューに入れる
+        </button>
+        <button
+          disabled={data.accounts.length === 0}
+          onClick={() => enqueue(data.accounts.map((a) => a.username))}
+        >
+          表示中の全{data.accounts.length}件をキューに入れる
+        </button>
+        {selected.size > 0 && <button onClick={() => setSelected(new Set())}>選択解除</button>}
+        <span className="queued-count">キュー: {counts.queued} 件</span>
+      </div>
       {data.accounts.length === 0 ? (
         <p className="empty">
           該当するアカウントがありません。まだ取り込んでいない場合は「取り込み」タブからエクスポートZIPを読み込んでください。
@@ -99,7 +137,13 @@ export default function ListView() {
       ) : (
         <div className="grid">
           {data.accounts.map((a) => (
-            <AccountCard key={a.username} account={a} onStatusChange={onStatusChange} />
+            <AccountCard
+              key={a.username}
+              account={a}
+              selected={selected.has(a.username)}
+              onToggleSelect={toggleSelect}
+              onStatusChange={onStatusChange}
+            />
           ))}
         </div>
       )}

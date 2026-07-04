@@ -49,3 +49,8 @@ input[type='search'] { flex: 1; min-width: 160px; }
 .dropzone.dragging, .dropzone:hover { border-color: var(--accent); color: var(--text); }
 .import-summary { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
 .import-summary h3 { margin-top: 0; }
+
+.bulkbar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; color: var(--muted); font-size: 13px; flex-wrap: wrap; }
+.badge-queued { background: #3a2a4a; color: #c99cff; }
+.select-box { width: 16px; height: 16px; accent-color: var(--accent); flex-shrink: 0; }
+.queued-count { margin-left: auto; }
