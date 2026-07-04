@@ -97,3 +97,61 @@ describe('mergeAccounts', () => {
     expect(merged.map((a) => a.username)).toEqual(['stay']);
   });
 });
+
+describe('diffAccounts', () => {
+  const acc = (
+    username: string,
+    relationship: 'mutual' | 'followingOnly' | 'followerOnly',
+    status: 'pending' | 'unfollowed' | 'followedBack' | 'keep' = 'pending',
+  ) => ({
+    username,
+    profileUrl: `https://www.instagram.com/${username}/`,
+    relationship,
+    followedAt: null,
+    followerSince: null,
+    status,
+    statusChangedAt: null,
+    queued: false,
+    profile: null,
+  });
+
+  it('新規/離脱フォロワー・アンフォロー確定/未完了・フォローバック反映を検出する', async () => {
+    const { diffAccounts } = await import('./importer.js');
+    const prev = [
+      acc('stay_mutual', 'mutual'),
+      acc('lost_fan', 'followerOnly'),
+      acc('unfollowed_ok', 'followingOnly', 'unfollowed'),
+      acc('unfollowed_ng', 'followingOnly', 'unfollowed'),
+      acc('fb_done', 'followerOnly', 'followedBack'),
+    ];
+    const fresh = [
+      acc('stay_mutual', 'mutual'),
+      acc('new_fan', 'followerOnly'),
+      acc('unfollowed_ng', 'followingOnly'),
+      acc('fb_done', 'mutual'),
+    ];
+    const diff = diffAccounts(prev, fresh);
+    expect(diff.newFollowers).toEqual(['new_fan']);
+    expect(diff.lostFollowers).toEqual(['lost_fan']);
+    expect(diff.unfollowConfirmed).toEqual(['unfollowed_ok']);
+    expect(diff.unfollowIncomplete).toEqual(['unfollowed_ng']);
+    expect(diff.followBackConfirmed).toEqual(['fb_done']);
+    expect(diff.newFollowing).toEqual(['fb_done']);
+  });
+
+  it('mergeAccounts: アンフォロー済みなのにまだフォロー中なら pending に戻す', async () => {
+    const { mergeAccounts } = await import('./importer.js');
+    const prev = [acc('still_following', 'followingOnly', 'unfollowed')];
+    const fresh = [acc('still_following', 'followingOnly')];
+    const merged = mergeAccounts(prev, fresh);
+    expect(merged[0].status).toBe('pending');
+  });
+
+  it('mergeAccounts: フォローバック済みは status を維持する', async () => {
+    const { mergeAccounts } = await import('./importer.js');
+    const prev = [acc('fb', 'followerOnly', 'followedBack')];
+    const fresh = [acc('fb', 'mutual')];
+    const merged = mergeAccounts(prev, fresh);
+    expect(merged[0].status).toBe('followedBack');
+  });
+});
