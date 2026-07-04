@@ -1,4 +1,11 @@
-import type { Account, AccountsResponse, AccountStatus, EnrichStatus, ImportSummary } from './types';
+import type {
+  Account,
+  AccountsResponse,
+  AccountStatus,
+  EnrichStatus,
+  ImportSummary,
+  StatsResponse,
+} from './types';
 
 async function handle<T>(res: Response): Promise<T> {
   const body = await res.json().catch(() => ({}));
@@ -76,4 +83,8 @@ export function enrichStop(): Promise<EnrichStatus> {
 
 export function enrichStatus(): Promise<EnrichStatus> {
   return fetch('/api/enrich/status').then((r) => handle<EnrichStatus>(r));
+}
+
+export function fetchStats(): Promise<StatsResponse> {
+  return fetch('/api/stats').then((r) => handle<StatsResponse>(r));
 }

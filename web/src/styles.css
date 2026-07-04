@@ -78,3 +78,11 @@ input[type='search'] { flex: 1; min-width: 160px; }
 .enrich-progress { margin: 8px 0; display: flex; flex-direction: column; gap: 6px; }
 .progress-outer { height: 8px; background: var(--panel); border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
 .progress-inner { height: 100%; background: var(--accent); transition: width 0.5s; }
+
+.diff-list { list-style: none; padding: 0; margin: 8px 0; display: flex; flex-direction: column; gap: 4px; font-size: 14px; }
+.diff-highlight { color: #6fd394; font-weight: 600; }
+.diff-list details { display: inline-block; margin-left: 8px; color: var(--muted); font-size: 13px; }
+.diff-list summary { cursor: pointer; display: inline; }
+.diff-users { display: flex; flex-wrap: wrap; gap: 6px 12px; margin: 6px 0; }
+.diff-users a { color: var(--accent); text-decoration: none; font-size: 13px; }
+.stats-section { margin-top: 8px; }

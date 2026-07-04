@@ -43,6 +43,15 @@ export interface AccountsResponse {
   accounts: Account[];
 }
 
+export interface ImportDiff {
+  newFollowers: string[];
+  lostFollowers: string[];
+  newFollowing: string[];
+  unfollowConfirmed: string[];
+  unfollowIncomplete: string[];
+  followBackConfirmed: string[];
+}
+
 export interface ImportSummary {
   imported: number;
   followers: number;
@@ -50,6 +59,13 @@ export interface ImportSummary {
   mutual: number;
   followingOnly: number;
   followerOnly: number;
+  diff: ImportDiff;
+}
+
+export interface StatsResponse {
+  updatedAt: string;
+  counts: Counts;
+  lastDiff: (ImportDiff & { importedAt: string }) | null;
 }
 
 export interface EnrichStatus {
