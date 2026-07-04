@@ -1,3 +1,4 @@
+import { avatarInitial } from './avatar';
 import type { Account, AccountStatus } from './types';
 
 const REL_LABEL: Record<Account['relationship'], string> = {
@@ -38,7 +39,7 @@ export default function AccountCard({ account, selected, onToggleSelect, onStatu
         {profile?.picPath ? (
           <img className="avatar" src={profile.picPath} alt="" />
         ) : (
-          <div className="avatar avatar-initial">{username[0]?.toUpperCase()}</div>
+          <div className="avatar avatar-initial">{avatarInitial(username)}</div>
         )}
         <div className="card-title">
           <a href={account.profileUrl} target="_blank" rel="noreferrer">

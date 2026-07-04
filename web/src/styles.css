@@ -27,7 +27,7 @@ input[type='search'] { flex: 1; min-width: 160px; }
 .card.status-unfollowed, .card.status-keep, .card.status-followedBack { opacity: 0.55; }
 .card-head { display: flex; align-items: center; gap: 10px; }
 .avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
-.avatar-initial { display: flex; align-items: center; justify-content: center; background: #2c3340; color: var(--accent); font-weight: 700; font-size: 18px; }
+.avatar-initial { display: flex; align-items: center; justify-content: center; background: #3a4256; color: #cfe0ff; font-weight: 700; font-size: 18px; }
 .card-title { flex: 1; min-width: 0; }
 .card-title a { color: var(--text); font-weight: 600; text-decoration: none; }
 .card-title a:hover { color: var(--accent); }

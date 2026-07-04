@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { avatarInitial } from './avatar';
 import { fetchAccounts, updateAccount } from './api';
 import type { Account, AccountStatus } from './types';
 
@@ -88,7 +89,7 @@ export default function QueueView() {
           {profile?.picPath ? (
             <img className="avatar" src={profile.picPath} alt="" />
           ) : (
-            <div className="avatar avatar-initial">{username[0]?.toUpperCase()}</div>
+            <div className="avatar avatar-initial">{avatarInitial(username)}</div>
           )}
           <div className="card-title">
             <a className="queue-name" href={current.profileUrl} target="_blank" rel="noreferrer">
