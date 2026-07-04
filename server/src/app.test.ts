@@ -184,3 +184,41 @@ describe('queue', () => {
     expect(res.status).toBe(400);
   });
 });
+
+describe('settings/enrich API', () => {
+  it('Cookie設定: sessionidを含まないと400、設定後は configured=true', async () => {
+    const before = await (await app.request('/api/settings/cookie')).json();
+    expect(before.configured).toBe(false);
+    const bad = await app.request('/api/settings/cookie', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ cookie: 'foo=bar' }),
+    });
+    expect(bad.status).toBe(400);
+    const ok = await app.request('/api/settings/cookie', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ cookie: 'sessionid=abc; ds_user_id=1' }),
+    });
+    expect(ok.status).toBe(200);
+    const after = await (await app.request('/api/settings/cookie')).json();
+    expect(after.configured).toBe(true);
+  });
+
+  it('GET /api/enrich/status が状態を返す', async () => {
+    const res = await app.request('/api/enrich/status');
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(['idle', 'running', 'stopped', 'done']).toContain(body.state);
+  });
+
+  it('POST /api/enrich/stop は200', async () => {
+    const res = await app.request('/api/enrich/stop', { method: 'POST' });
+    expect(res.status).toBe(200);
+  });
+
+  it('/profiles/:file はパストラバーサルを拒否する', async () => {
+    const res = await app.request('/profiles/..%2Faccounts.json');
+    expect([400, 404]).toContain(res.status);
+  });
+});

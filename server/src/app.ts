@@ -1,7 +1,18 @@
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { Hono } from 'hono';
 import { classify } from './classifier.js';
+import { getEnrichStatus, runEnrich, stopEnrich } from './enricher.js';
 import { ImportError, mergeAccounts, parseExportZip } from './importer.js';
-import { loadAccounts, saveAccounts, saveImportSnapshot } from './store.js';
+import {
+  dataDir,
+  loadAccounts,
+  loadCookie,
+  saveAccounts,
+  saveCookie,
+  saveImportSnapshot,
+  withStore,
+} from './store.js';
 import type { Account, AccountStatus } from './types.js';
 
 const VALID_STATUS: readonly AccountStatus[] = ['pending', 'unfollowed', 'followedBack', 'keep'];
@@ -34,9 +45,12 @@ app.post('/api/import', async (c) => {
   }
   const now = new Date().toISOString();
   const fresh = classify(parsed.followers, parsed.following);
-  const current = await loadAccounts();
-  const accounts = mergeAccounts(current.accounts, fresh);
-  await saveAccounts({ updatedAt: now, accounts });
+  const accounts = await withStore(async () => {
+    const current = await loadAccounts();
+    const merged = mergeAccounts(current.accounts, fresh);
+    await saveAccounts({ updatedAt: now, accounts: merged });
+    return merged;
+  });
   await saveImportSnapshot(now.replace(/[:.]/g, '-'), {
     followers: parsed.followers,
     following: parsed.following,
@@ -89,16 +103,20 @@ app.patch('/api/accounts/:username', async (c) => {
   if (hasStatus && !VALID_STATUS.includes(body.status as AccountStatus)) {
     return c.json({ error: 'status が不正です' }, 400);
   }
-  const file = await loadAccounts();
-  const account = file.accounts.find((a) => a.username === username);
-  if (!account) return c.json({ error: 'アカウントが見つかりません' }, 404);
-  if (hasStatus) {
-    account.status = body.status as AccountStatus;
-    account.statusChangedAt = new Date().toISOString();
-  }
-  if (hasQueued) account.queued = body.queued as boolean;
-  await saveAccounts({ updatedAt: new Date().toISOString(), accounts: file.accounts });
-  return c.json({ account });
+  const result = await withStore(async () => {
+    const file = await loadAccounts();
+    const account = file.accounts.find((a) => a.username === username);
+    if (!account) return null;
+    if (hasStatus) {
+      account.status = body.status as AccountStatus;
+      account.statusChangedAt = new Date().toISOString();
+    }
+    if (hasQueued) account.queued = body.queued as boolean;
+    await saveAccounts({ updatedAt: new Date().toISOString(), accounts: file.accounts });
+    return account;
+  });
+  if (!result) return c.json({ error: 'アカウントが見つかりません' }, 404);
+  return c.json({ account: result });
 });
 
 app.post('/api/queue/bulk', async (c) => {
@@ -109,14 +127,56 @@ app.post('/api/queue/bulk', async (c) => {
     return c.json({ error: 'usernames（配列）と queued（真偽値）を指定してください' }, 400);
   }
   const targets = new Set(body.usernames as string[]);
-  const file = await loadAccounts();
-  let updated = 0;
-  for (const a of file.accounts) {
-    if (targets.has(a.username) && a.queued !== body.queued) {
-      a.queued = body.queued;
-      updated++;
+  const queued = body.queued;
+  const updated = await withStore(async () => {
+    const file = await loadAccounts();
+    let count = 0;
+    for (const a of file.accounts) {
+      if (targets.has(a.username) && a.queued !== queued) {
+        a.queued = queued;
+        count++;
+      }
     }
-  }
-  await saveAccounts({ updatedAt: new Date().toISOString(), accounts: file.accounts });
+    await saveAccounts({ updatedAt: new Date().toISOString(), accounts: file.accounts });
+    return count;
+  });
   return c.json({ updated });
+});
+
+app.get('/api/settings/cookie', async (c) => c.json({ configured: (await loadCookie()) !== null }));
+
+app.post('/api/settings/cookie', async (c) => {
+  const body = await c.req.json<{ cookie?: string }>().catch(() => ({}) as { cookie?: string });
+  const cookie = (body.cookie ?? '').trim();
+  if (!cookie.includes('sessionid=')) {
+    return c.json({ error: 'sessionid を含むCookie文字列を貼り付けてください' }, 400);
+  }
+  await saveCookie(cookie);
+  return c.json({ ok: true });
+});
+
+app.post('/api/enrich/start', (c) => {
+  void runEnrich(); // 裏で直列実行。進捗は /api/enrich/status で取得
+  return c.json(getEnrichStatus());
+});
+
+app.post('/api/enrich/stop', (c) => {
+  stopEnrich();
+  return c.json(getEnrichStatus());
+});
+
+app.get('/api/enrich/status', (c) => c.json(getEnrichStatus()));
+
+app.get('/profiles/:file', async (c) => {
+  const file = c.req.param('file');
+  if (!/^[a-zA-Z0-9._-]+$/.test(file)) return c.notFound();
+  try {
+    const buf = await readFile(join(dataDir(), 'profiles', file));
+    return c.body(new Uint8Array(buf), 200, {
+      'content-type': 'image/jpeg',
+      'cache-control': 'public, max-age=86400',
+    });
+  } catch {
+    return c.notFound();
+  }
 });
