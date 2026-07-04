@@ -160,8 +160,16 @@ app.post('/api/settings/cookie', async (c) => {
   return c.json({ ok: true });
 });
 
-app.post('/api/enrich/start', (c) => {
-  void runEnrich(); // 裏で直列実行。進捗は /api/enrich/status で取得
+app.post('/api/enrich/start', async (c) => {
+  const body = await c.req
+    .json<{ relationship?: string; onlyQueued?: boolean; limit?: number }>()
+    .catch(() => ({}) as { relationship?: string; onlyQueued?: boolean; limit?: number });
+  const scope = {
+    relationship: body.relationship,
+    onlyQueued: body.onlyQueued === true,
+    limit: typeof body.limit === 'number' ? body.limit : undefined,
+  };
+  void runEnrich(undefined, undefined, scope); // 裏で直列実行。進捗は /api/enrich/status で取得
   return c.json(getEnrichStatus());
 });
 

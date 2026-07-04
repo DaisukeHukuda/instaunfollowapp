@@ -144,7 +144,20 @@ async function saveProfile(username: string, profile: Profile): Promise<void> {
   });
 }
 
-export async function runEnrich(fetchFn: FetchLike = fetch, sleepFn: SleepLike = sleep): Promise<void> {
+export interface EnrichScope {
+  /** 'mutual' | 'followingOnly' | 'followerOnly' で関係性を絞る */
+  relationship?: string;
+  /** キューに入っているものだけ */
+  onlyQueued?: boolean;
+  /** 先頭 N 件だけ（動作確認用） */
+  limit?: number;
+}
+
+export async function runEnrich(
+  fetchFn: FetchLike = fetch,
+  sleepFn: SleepLike = sleep,
+  scope: EnrichScope = {},
+): Promise<void> {
   if (status.state === 'running') return;
   Object.assign(status, { state: 'running', reason: null, total: 0, done: 0, failed: 0, current: null });
   abort = false;
@@ -155,7 +168,10 @@ export async function runEnrich(fetchFn: FetchLike = fetch, sleepFn: SleepLike =
     return;
   }
   const file = await loadAccounts();
-  const targets = file.accounts.filter((a) => !a.profile?.fetchedAt);
+  let targets = file.accounts.filter((a) => !a.profile?.fetchedAt);
+  if (scope.relationship) targets = targets.filter((a) => a.relationship === scope.relationship);
+  if (scope.onlyQueued) targets = targets.filter((a) => a.queued);
+  if (typeof scope.limit === 'number' && scope.limit >= 0) targets = targets.slice(0, scope.limit);
   status.total = targets.length;
   if (targets.length === 0) {
     status.state = 'done';

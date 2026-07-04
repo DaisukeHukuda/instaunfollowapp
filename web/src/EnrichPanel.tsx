@@ -6,6 +6,7 @@ import {
   getCookieConfigured,
   saveCookieValue,
 } from './api';
+import type { EnrichScope } from './api';
 import type { EnrichStatus } from './types';
 
 const STATE_LABEL: Record<EnrichStatus['state'], string> = {
@@ -15,10 +16,28 @@ const STATE_LABEL: Record<EnrichStatus['state'], string> = {
   done: '完了',
 };
 
+const SCOPE_OPTIONS = [
+  { value: 'followingOnly', label: '片思いのみ（アンフォロー候補）' },
+  { value: '', label: 'すべて（未取得の全件）' },
+  { value: 'followerOnly', label: 'ファンのみ' },
+  { value: 'mutual', label: '相互のみ' },
+  { value: 'queued', label: 'キューに入れた分のみ' },
+] as const;
+
+/** 画面の選択値を API の scope に変換 */
+function toScope(value: string, limit?: number): EnrichScope {
+  const scope: EnrichScope = {};
+  if (value === 'queued') scope.onlyQueued = true;
+  else if (value) scope.relationship = value;
+  if (limit != null) scope.limit = limit;
+  return scope;
+}
+
 export default function EnrichPanel() {
   const [configured, setConfigured] = useState<boolean | null>(null);
   const [cookie, setCookie] = useState('');
   const [st, setSt] = useState<EnrichStatus | null>(null);
+  const [scope, setScope] = useState('followingOnly');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -44,9 +63,9 @@ export default function EnrichPanel() {
       .catch((e: Error) => setError(e.message));
   };
 
-  const onStart = () => {
+  const onStart = (limit?: number) => {
     setError('');
-    enrichStart().then(setSt).catch((e: Error) => setError(e.message));
+    enrichStart(toScope(scope, limit)).then(setSt).catch((e: Error) => setError(e.message));
   };
 
   const onStop = () => {
@@ -88,8 +107,29 @@ export default function EnrichPanel() {
 
       <h3>2. 取得の実行</h3>
       <div className="enrich-controls">
-        <button disabled={!configured || st?.state === 'running'} onClick={onStart}>
-          {st?.state === 'stopped' ? '再開する' : '取得を開始'}
+        <label className="muted">対象</label>
+        <select
+          value={scope}
+          disabled={st?.state === 'running'}
+          onChange={(e) => setScope(e.target.value)}
+        >
+          {SCOPE_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="enrich-controls">
+        <button
+          disabled={!configured || st?.state === 'running'}
+          onClick={() => onStart(10)}
+          title="まず10件だけ取得して動作を確認します"
+        >
+          まず10件だけ試す
+        </button>
+        <button disabled={!configured || st?.state === 'running'} onClick={() => onStart()}>
+          {st?.state === 'stopped' ? '続きを取得' : 'この対象を取得'}
         </button>
         {st?.state === 'running' && <button onClick={onStop}>停止</button>}
         {st && <span className="muted">状態: {STATE_LABEL[st.state]}</span>}

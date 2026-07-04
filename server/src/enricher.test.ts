@@ -161,4 +161,53 @@ describe('runEnrich', () => {
     expect(st.reason).toContain('429');
     expect(fetchFn).toHaveBeenCalledTimes(1);
   });
+
+  it('scope.relationship で対象を絞る', async () => {
+    await saveCookie('sessionid=x');
+    const following = account('follow_a');
+    const fan = { ...account('fan_b'), relationship: 'followerOnly' as const };
+    await saveAccounts({ updatedAt: '', accounts: [following, fan] });
+    const fetchFn = vi.fn(async (url: string | URL | Request) =>
+      String(url).includes('web_profile_info')
+        ? jsonRes({ data: { user: igUser } })
+        : new Response(new Uint8Array([1]), { status: 200 }),
+    );
+    await runEnrich(fetchFn as typeof fetch, noSleep, { relationship: 'followingOnly' });
+    const st = getEnrichStatus();
+    expect(st.total).toBe(1);
+    expect(st.done).toBe(1);
+    const { accounts } = await loadAccounts();
+    expect(accounts.find((a) => a.username === 'follow_a')!.profile?.fetchedAt).toBeTruthy();
+    expect(accounts.find((a) => a.username === 'fan_b')!.profile).toBeNull();
+  });
+
+  it('scope.limit で先頭N件だけ取得する', async () => {
+    await saveCookie('sessionid=x');
+    await saveAccounts({
+      updatedAt: '',
+      accounts: [account('a'), account('b'), account('c')],
+    });
+    const fetchFn = vi.fn(async (url: string | URL | Request) =>
+      String(url).includes('web_profile_info')
+        ? jsonRes({ data: { user: igUser } })
+        : new Response(new Uint8Array([1]), { status: 200 }),
+    );
+    await runEnrich(fetchFn as typeof fetch, noSleep, { limit: 2 });
+    const st = getEnrichStatus();
+    expect(st.total).toBe(2);
+    expect(st.done).toBe(2);
+  });
+
+  it('scope.onlyQueued でキューのみ取得する', async () => {
+    await saveCookie('sessionid=x');
+    const queued = { ...account('q'), queued: true };
+    await saveAccounts({ updatedAt: '', accounts: [queued, account('not_q')] });
+    const fetchFn = vi.fn(async (url: string | URL | Request) =>
+      String(url).includes('web_profile_info')
+        ? jsonRes({ data: { user: igUser } })
+        : new Response(new Uint8Array([1]), { status: 200 }),
+    );
+    await runEnrich(fetchFn as typeof fetch, noSleep, { onlyQueued: true });
+    expect(getEnrichStatus().total).toBe(1);
+  });
 });

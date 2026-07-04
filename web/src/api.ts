@@ -73,8 +73,18 @@ export function saveCookieValue(cookie: string): Promise<void> {
     .then(() => undefined);
 }
 
-export function enrichStart(): Promise<EnrichStatus> {
-  return fetch('/api/enrich/start', { method: 'POST' }).then((r) => handle<EnrichStatus>(r));
+export interface EnrichScope {
+  relationship?: string;
+  onlyQueued?: boolean;
+  limit?: number;
+}
+
+export function enrichStart(scope: EnrichScope = {}): Promise<EnrichStatus> {
+  return fetch('/api/enrich/start', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(scope),
+  }).then((r) => handle<EnrichStatus>(r));
 }
 
 export function enrichStop(): Promise<EnrichStatus> {
