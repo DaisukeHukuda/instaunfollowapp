@@ -37,3 +37,30 @@ export async function saveImportSnapshot(name: string, data: unknown): Promise<v
   await mkdir(dir, { recursive: true });
   await writeFile(join(dir, `${name}.json`), JSON.stringify(data, null, 2), 'utf8');
 }
+
+/** サーバ内の読み書き競合（enricherとUI操作の同時更新）を直列化する */
+let chain: Promise<unknown> = Promise.resolve();
+export function withStore<T>(fn: () => Promise<T>): Promise<T> {
+  const next = chain.then(fn, fn);
+  chain = next.then(
+    () => undefined,
+    () => undefined,
+  );
+  return next;
+}
+
+export async function saveCookie(cookie: string): Promise<void> {
+  const dir = join(dataDir(), 'secrets');
+  await mkdir(dir, { recursive: true });
+  await writeFile(join(dir, 'cookie.json'), JSON.stringify({ cookie }), { mode: 0o600 });
+}
+
+export async function loadCookie(): Promise<string | null> {
+  try {
+    const raw = await readFile(join(dataDir(), 'secrets', 'cookie.json'), 'utf8');
+    return (JSON.parse(raw) as { cookie?: string }).cookie ?? null;
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    throw e;
+  }
+}

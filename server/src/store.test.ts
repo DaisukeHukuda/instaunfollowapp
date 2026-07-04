@@ -45,4 +45,26 @@ describe('store', () => {
     const file = await loadAccounts();
     expect(file).toEqual(sample);
   });
+
+  it('Cookieを保存・読込できる（未設定はnull）', async () => {
+    const { loadCookie, saveCookie } = await import('./store.js');
+    expect(await loadCookie()).toBeNull();
+    await saveCookie('sessionid=abc; ds_user_id=1');
+    expect(await loadCookie()).toBe('sessionid=abc; ds_user_id=1');
+  });
+
+  it('withStore は書き込みを直列化する', async () => {
+    const { withStore } = await import('./store.js');
+    const order: number[] = [];
+    await Promise.all([
+      withStore(async () => {
+        await new Promise((r) => setTimeout(r, 30));
+        order.push(1);
+      }),
+      withStore(async () => {
+        order.push(2);
+      }),
+    ]);
+    expect(order).toEqual([1, 2]);
+  });
 });
