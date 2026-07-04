@@ -9,6 +9,12 @@ export interface Profile {
   bio: string | null;
   followerCount: number | null;
   picPath: string | null;
+  followingCount: number | null;
+  postCount: number | null;
+  isPrivate: boolean | null;
+  isVerified: boolean | null;
+  fetchedAt: string | null;
+  fetchError: string | null;
 }
 
 export interface Account {
@@ -44,4 +50,13 @@ export interface ImportSummary {
   mutual: number;
   followingOnly: number;
   followerOnly: number;
+}
+
+export interface EnrichStatus {
+  state: 'idle' | 'running' | 'stopped' | 'done';
+  reason: string | null;
+  total: number;
+  done: number;
+  failed: number;
+  current: string | null;
 }

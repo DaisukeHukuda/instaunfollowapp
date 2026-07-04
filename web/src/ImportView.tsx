@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { importZip } from './api';
+import EnrichPanel from './EnrichPanel';
 import type { ImportSummary } from './types';
 
 export default function ImportView() {
@@ -69,6 +70,8 @@ export default function ImportView() {
           <p>「一覧」タブで整理を始められます。</p>
         </div>
       )}
+      <hr className="divider" />
+      <EnrichPanel />
     </div>
   );
 }

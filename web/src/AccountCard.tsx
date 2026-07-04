@@ -52,6 +52,9 @@ export default function AccountCard({ account, selected, onToggleSelect, onStatu
       {profile?.bio && <p className="bio">{profile.bio}</p>}
       <div className="card-meta">
         <span>フォロー日: {fmtDate(account.followedAt)}</span>
+        {profile?.followerCount != null && (
+          <span>フォロワー {profile.followerCount.toLocaleString()}</span>
+        )}
         <span className="status-label">{STATUS_LABEL[status]}</span>
       </div>
       <div className="card-actions">

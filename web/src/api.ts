@@ -1,4 +1,4 @@
-import type { Account, AccountsResponse, AccountStatus, ImportSummary } from './types';
+import type { Account, AccountsResponse, AccountStatus, EnrichStatus, ImportSummary } from './types';
 
 async function handle<T>(res: Response): Promise<T> {
   const body = await res.json().catch(() => ({}));
@@ -48,4 +48,32 @@ export function importZip(file: File): Promise<ImportSummary> {
   return fetch('/api/import', { method: 'POST', body: form }).then((r) =>
     handle<ImportSummary>(r),
   );
+}
+
+export function getCookieConfigured(): Promise<boolean> {
+  return fetch('/api/settings/cookie')
+    .then((r) => handle<{ configured: boolean }>(r))
+    .then((b) => b.configured);
+}
+
+export function saveCookieValue(cookie: string): Promise<void> {
+  return fetch('/api/settings/cookie', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ cookie }),
+  })
+    .then((r) => handle<{ ok: boolean }>(r))
+    .then(() => undefined);
+}
+
+export function enrichStart(): Promise<EnrichStatus> {
+  return fetch('/api/enrich/start', { method: 'POST' }).then((r) => handle<EnrichStatus>(r));
+}
+
+export function enrichStop(): Promise<EnrichStatus> {
+  return fetch('/api/enrich/stop', { method: 'POST' }).then((r) => handle<EnrichStatus>(r));
+}
+
+export function enrichStatus(): Promise<EnrichStatus> {
+  return fetch('/api/enrich/status').then((r) => handle<EnrichStatus>(r));
 }
