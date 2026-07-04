@@ -252,6 +252,27 @@ describe('settings/enrich API', () => {
     expect(acc.accounts[0].profile.fetchError).toContain('存在しません');
   });
 
+  it('POST /api/enrich/ingest: 画像だけの取り込みは既存テキストを消さない', async () => {
+    await importSample();
+    // まず名前つきで取り込み
+    await app.request('/api/enrich/ingest', {
+      method: 'POST',
+      body: JSON.stringify({ username: 'oneway_c', user: { full_name: '太郎', edge_followed_by: { count: 5 } } }),
+    });
+    // 画像だけ（user省略）で再取り込み
+    const px =
+      'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgARCAABAAEDASIAAhEBAxEB/8QAFAABAAAAAAAAAAAAAAAAAAAAAP/EABQBAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhADEAAAAT8H/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABBQJ//8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAwEBPwF//8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAgEBPwF//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQAGPwJ//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPyF//9oADAMBAAIAAwAAABAf/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAwEBPxB//8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAgEBPxB//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxB//9k=';
+    const res = await app.request('/api/enrich/ingest', {
+      method: 'POST',
+      body: JSON.stringify({ username: 'oneway_c', picDataUrl: px }),
+    });
+    expect(res.status).toBe(200);
+    const acc = await (await app.request('/api/accounts?q=oneway_c')).json();
+    expect(acc.accounts[0].profile.displayName).toBe('太郎');
+    expect(acc.accounts[0].profile.followerCount).toBe(5);
+    expect(acc.accounts[0].profile.picPath).toBe('/profiles/oneway_c.jpg');
+  });
+
   it('POST /api/enrich/ingest: username無しは400', async () => {
     const res = await app.request('/api/enrich/ingest', {
       method: 'POST',

@@ -147,6 +147,19 @@ export async function ingestProfile(
   picDataUrl: string | null = null,
   fetchFn: FetchLike = fetch,
 ): Promise<void> {
+  // rawUser 未指定（画像だけの取り込み）なら既存のテキストを消さず、画像だけ更新する
+  if (rawUser == null && picDataUrl) {
+    const picPath = await savePicFromDataUrl(username, picDataUrl);
+    await withStore(async () => {
+      const file = await loadAccounts();
+      const account = file.accounts.find((a) => a.username === username);
+      if (!account) return;
+      const base = account.profile ?? mapIgUser(null).profile;
+      account.profile = { ...base, picPath, fetchedAt: new Date().toISOString() };
+      await saveAccounts({ updatedAt: new Date().toISOString(), accounts: file.accounts });
+    });
+    return;
+  }
   const { profile, picUrl } = mapIgUser(rawUser);
   if (picDataUrl) profile.picPath = await savePicFromDataUrl(username, picDataUrl);
   else if (picUrl) profile.picPath = await downloadPic(username, picUrl, fetchFn);
