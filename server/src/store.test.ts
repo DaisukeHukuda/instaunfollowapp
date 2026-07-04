@@ -67,4 +67,12 @@ describe('store', () => {
     ]);
     expect(order).toEqual([1, 2]);
   });
+
+  it('last-diff を保存・読込できる（未保存はnull）', async () => {
+    const { loadLastDiff, saveLastDiff } = await import('./store.js');
+    expect(await loadLastDiff()).toBeNull();
+    const diff = { importedAt: '2026-07-04T00:00:00.000Z', newFollowers: ['a'] };
+    await saveLastDiff(diff);
+    expect(await loadLastDiff()).toEqual(diff);
+  });
 });

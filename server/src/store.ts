@@ -64,3 +64,18 @@ export async function loadCookie(): Promise<string | null> {
     throw e;
   }
 }
+
+export async function saveLastDiff(diff: unknown): Promise<void> {
+  const dir = dataDir();
+  await mkdir(dir, { recursive: true });
+  await writeFile(join(dir, 'last-diff.json'), JSON.stringify(diff, null, 2), 'utf8');
+}
+
+export async function loadLastDiff(): Promise<unknown | null> {
+  try {
+    return JSON.parse(await readFile(join(dataDir(), 'last-diff.json'), 'utf8'));
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    throw e;
+  }
+}

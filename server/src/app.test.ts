@@ -222,3 +222,34 @@ describe('settings/enrich API', () => {
     expect([400, 404]).toContain(res.status);
   });
 });
+
+describe('diff & stats', () => {
+  it('再取り込みで差分がレスポンスに含まれ、statsで取れる', async () => {
+    await importSample();
+    // oneway_c をアンフォロー済みにするが、同じZIPを再取り込み → まだフォロー中なので未完了
+    await app.request('/api/accounts/oneway_c', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ status: 'unfollowed' }),
+    });
+    const res = await importSample();
+    const body = await res.json();
+    expect(body.diff.unfollowIncomplete).toEqual(['oneway_c']);
+    expect(body.diff.newFollowers).toEqual([]);
+    // 未完了は pending に戻る
+    const acc = await (await app.request('/api/accounts?q=oneway_c')).json();
+    expect(acc.accounts[0].status).toBe('pending');
+    // stats に最新差分が入る
+    const stats = await (await app.request('/api/stats')).json();
+    expect(stats.lastDiff.unfollowIncomplete).toEqual(['oneway_c']);
+    expect(stats.lastDiff.importedAt).toBeTruthy();
+    expect(stats.counts.total).toBe(3);
+  });
+
+  it('初回取り込みでは差分は全て空', async () => {
+    const res = await importSample();
+    const body = await res.json();
+    expect(body.diff.newFollowers.sort()).toEqual(['fan_b', 'mutual_a']);
+    expect(body.diff.unfollowConfirmed).toEqual([]);
+  });
+});

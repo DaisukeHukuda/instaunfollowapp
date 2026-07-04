@@ -3,14 +3,16 @@ import { join } from 'node:path';
 import { Hono } from 'hono';
 import { classify } from './classifier.js';
 import { getEnrichStatus, runEnrich, stopEnrich } from './enricher.js';
-import { ImportError, mergeAccounts, parseExportZip } from './importer.js';
+import { diffAccounts, ImportError, mergeAccounts, parseExportZip } from './importer.js';
 import {
   dataDir,
   loadAccounts,
   loadCookie,
+  loadLastDiff,
   saveAccounts,
   saveCookie,
   saveImportSnapshot,
+  saveLastDiff,
   withStore,
 } from './store.js';
 import type { Account, AccountStatus } from './types.js';
@@ -45,16 +47,18 @@ app.post('/api/import', async (c) => {
   }
   const now = new Date().toISOString();
   const fresh = classify(parsed.followers, parsed.following);
-  const accounts = await withStore(async () => {
+  const { accounts, diff } = await withStore(async () => {
     const current = await loadAccounts();
+    const d = diffAccounts(current.accounts, fresh);
     const merged = mergeAccounts(current.accounts, fresh);
     await saveAccounts({ updatedAt: now, accounts: merged });
-    return merged;
+    return { accounts: merged, diff: d };
   });
   await saveImportSnapshot(now.replace(/[:.]/g, '-'), {
     followers: parsed.followers,
     following: parsed.following,
   });
+  await saveLastDiff({ importedAt: now, ...diff });
   const counts = countBy(accounts);
   return c.json({
     imported: counts.total,
@@ -63,6 +67,7 @@ app.post('/api/import', async (c) => {
     mutual: counts.mutual,
     followingOnly: counts.followingOnly,
     followerOnly: counts.followerOnly,
+    diff,
   });
 });
 
@@ -166,6 +171,11 @@ app.post('/api/enrich/stop', (c) => {
 });
 
 app.get('/api/enrich/status', (c) => c.json(getEnrichStatus()));
+
+app.get('/api/stats', async (c) => {
+  const { accounts, updatedAt } = await loadAccounts();
+  return c.json({ updatedAt, counts: countBy(accounts), lastDiff: await loadLastDiff() });
+});
 
 app.get('/profiles/:file', async (c) => {
   const file = c.req.param('file');
