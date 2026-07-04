@@ -93,7 +93,14 @@ export async function fetchProfile(
   }
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const json = (await res.json()) as { data?: { user?: IgUser | null } };
-  const u = json.data?.user;
+  return mapIgUser(json.data?.user ?? null);
+}
+
+/** Instagramの user オブジェクトを Profile に変換する純粋関数（ブラウザ取り込みでも再利用） */
+export function mapIgUser(u: IgUser | null | undefined): {
+  profile: Profile;
+  picUrl: string | null;
+} {
   if (!u) {
     return {
       profile: { ...emptyProfile(), fetchError: 'アカウントが存在しません（退会済みの可能性）' },
@@ -113,6 +120,38 @@ export async function fetchProfile(
     },
     picUrl: u.profile_pic_url_hd ?? u.profile_pic_url ?? null,
   };
+}
+
+/** data URL（data:image/jpeg;base64,...）をローカルに保存し、公開パスを返す */
+export async function savePicFromDataUrl(
+  username: string,
+  dataUrl: string,
+): Promise<string | null> {
+  const m = /^data:image\/\w+;base64,(.+)$/s.exec(dataUrl);
+  if (!m) return null;
+  const buf = Buffer.from(m[1], 'base64');
+  const dir = join(dataDir(), 'profiles');
+  await mkdir(dir, { recursive: true });
+  const safe = username.replace(/[^a-zA-Z0-9._-]/g, '_');
+  await writeFile(join(dir, `${safe}.jpg`), buf);
+  return `/profiles/${safe}.jpg`;
+}
+
+/**
+ * ブラウザ側（ログイン済み）で取得した raw user を受け取り保存する。
+ * picDataUrl があればそれを画像として保存（ブラウザ取り込み）、無ければ picUrl からDL（サーバ取得）。
+ */
+export async function ingestProfile(
+  username: string,
+  rawUser: IgUser | null,
+  picDataUrl: string | null = null,
+  fetchFn: FetchLike = fetch,
+): Promise<void> {
+  const { profile, picUrl } = mapIgUser(rawUser);
+  if (picDataUrl) profile.picPath = await savePicFromDataUrl(username, picDataUrl);
+  else if (picUrl) profile.picPath = await downloadPic(username, picUrl, fetchFn);
+  profile.fetchedAt = new Date().toISOString();
+  await saveProfile(username, profile);
 }
 
 async function downloadPic(

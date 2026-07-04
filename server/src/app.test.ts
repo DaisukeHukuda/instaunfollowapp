@@ -221,6 +221,44 @@ describe('settings/enrich API', () => {
     const res = await app.request('/profiles/..%2Faccounts.json');
     expect([400, 404]).toContain(res.status);
   });
+
+  it('POST /api/enrich/ingest: raw userを保存しfetchedAtが付く', async () => {
+    await importSample();
+    const user = {
+      full_name: 'ワンウェイ太郎',
+      biography: '自己紹介',
+      edge_followed_by: { count: 55 },
+      is_private: false,
+    };
+    const res = await app.request('/api/enrich/ingest', {
+      method: 'POST',
+      body: JSON.stringify({ username: 'oneway_c', user }),
+    });
+    expect(res.status).toBe(200);
+    const acc = await (await app.request('/api/accounts?q=oneway_c')).json();
+    expect(acc.accounts[0].profile.displayName).toBe('ワンウェイ太郎');
+    expect(acc.accounts[0].profile.followerCount).toBe(55);
+    expect(acc.accounts[0].profile.fetchedAt).toBeTruthy();
+  });
+
+  it('POST /api/enrich/ingest: user=null（退会）は fetchError を保存', async () => {
+    await importSample();
+    const res = await app.request('/api/enrich/ingest', {
+      method: 'POST',
+      body: JSON.stringify({ username: 'fan_b', user: null }),
+    });
+    expect(res.status).toBe(200);
+    const acc = await (await app.request('/api/accounts?q=fan_b')).json();
+    expect(acc.accounts[0].profile.fetchError).toContain('存在しません');
+  });
+
+  it('POST /api/enrich/ingest: username無しは400', async () => {
+    const res = await app.request('/api/enrich/ingest', {
+      method: 'POST',
+      body: JSON.stringify({ user: {} }),
+    });
+    expect(res.status).toBe(400);
+  });
 });
 
 describe('diff & stats', () => {

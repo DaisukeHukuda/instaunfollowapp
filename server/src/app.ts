@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Hono } from 'hono';
 import { classify } from './classifier.js';
-import { getEnrichStatus, runEnrich, stopEnrich } from './enricher.js';
+import { getEnrichStatus, ingestProfile, runEnrich, stopEnrich } from './enricher.js';
 import { diffAccounts, ImportError, mergeAccounts, parseExportZip } from './importer.js';
 import {
   dataDir,
@@ -179,6 +179,22 @@ app.post('/api/enrich/stop', (c) => {
 });
 
 app.get('/api/enrich/status', (c) => c.json(getEnrichStatus()));
+
+// ブラウザ側（ログイン済みInstagram）で取得した raw user を受け取る取り込み口。
+// text/plain で受けるためクロスオリジンでもプリフライト不要（サーバはCookieに触れない）。
+app.post('/api/enrich/ingest', async (c) => {
+  let body: { username?: string; user?: unknown; picDataUrl?: string };
+  try {
+    body = JSON.parse(await c.req.text());
+  } catch {
+    return c.json({ error: 'JSONを解析できません' }, 400);
+  }
+  if (!body.username || typeof body.username !== 'string') {
+    return c.json({ error: 'username が必要です' }, 400);
+  }
+  await ingestProfile(body.username, (body.user ?? null) as never, body.picDataUrl ?? null);
+  return c.json({ ok: true }, 200, { 'access-control-allow-origin': '*' });
+});
 
 app.get('/api/stats', async (c) => {
   const { accounts, updatedAt } = await loadAccounts();
