@@ -1,17 +1,10 @@
 import { avatarInitial } from './avatar';
-import type { Account, AccountStatus } from './types';
+import type { Account } from './types';
 
 const REL_LABEL: Record<Account['relationship'], string> = {
   mutual: '相互',
   followingOnly: '片思い',
   followerOnly: 'ファン',
-};
-
-const STATUS_LABEL: Record<AccountStatus, string> = {
-  pending: '未処理',
-  unfollowed: 'フォロー解除済み',
-  followedBack: 'フォローバック済み',
-  keep: '残す',
 };
 
 /** relationship から「自分→相手」「相手→自分」のフォロー有無を出す */
@@ -28,16 +21,17 @@ const fmtDate = (iso: string | null): string =>
 interface Props {
   account: Account;
   selected: boolean;
+  opened: boolean;
   onToggleSelect: (username: string) => void;
-  onStatusChange: (username: string, status: AccountStatus) => void;
+  onOpen: (username: string) => void;
 }
 
-export default function AccountCard({ account, selected, onToggleSelect, onStatusChange }: Props) {
-  const { username, relationship, status, profile } = account;
+export default function AccountCard({ account, selected, opened, onToggleSelect, onOpen }: Props) {
+  const { username, relationship, profile } = account;
   const name = profile?.displayName || username;
   const { youFollow, followsYou } = relFlags(relationship);
   return (
-    <div className={`card status-${status}`}>
+    <div className={`card${opened ? ' opened' : ''}`}>
       <div className="card-head">
         <input
           type="checkbox"
@@ -57,7 +51,7 @@ export default function AccountCard({ account, selected, onToggleSelect, onStatu
           {profile?.displayName && <div className="display-name">{name}</div>}
         </div>
         <span className={`badge badge-${relationship}`}>{REL_LABEL[relationship]}</span>
-        {account.queued && <span className="badge badge-queued">キュー</span>}
+        {opened && <span className="badge badge-opened">開いた</span>}
       </div>
 
       <div className="rel-row">
@@ -69,40 +63,27 @@ export default function AccountCard({ account, selected, onToggleSelect, onStatu
         </span>
       </div>
 
-      {profile?.bio && <p className="bio">{profile.bio}</p>}
+      {profile?.bio ? (
+        <p className="bio">{profile.bio}</p>
+      ) : (
+        profile?.fetchedAt && <p className="bio bio-empty">（自己紹介なし）</p>
+      )}
       <div className="card-meta">
         <span>フォロー日: {fmtDate(account.followedAt)}</span>
         {profile?.followerCount != null && (
           <span>フォロワー {profile.followerCount.toLocaleString()}</span>
         )}
-        <span className="status-label">{STATUS_LABEL[status]}</span>
       </div>
 
       <div className="card-actions">
         {youFollow ? (
-          <>
-            <a className="btn btn-unfollow" href={account.profileUrl} target="_blank" rel="noreferrer">
-              フォローを外す ↗
-            </a>
-            {status !== 'unfollowed' && (
-              <button onClick={() => onStatusChange(username, 'unfollowed')}>外した ✓</button>
-            )}
-          </>
+          <button className="btn-unfollow" onClick={() => onOpen(username)}>
+            フォローを外す ↗
+          </button>
         ) : (
-          <>
-            <a className="btn" href={account.profileUrl} target="_blank" rel="noreferrer">
-              プロフィールを開く ↗
-            </a>
-            {status !== 'followedBack' && (
-              <button onClick={() => onStatusChange(username, 'followedBack')}>フォローした</button>
-            )}
-          </>
-        )}
-        {status !== 'keep' && (
-          <button onClick={() => onStatusChange(username, 'keep')}>残す</button>
-        )}
-        {status !== 'pending' && (
-          <button onClick={() => onStatusChange(username, 'pending')}>未処理に戻す</button>
+          <a className="btn" href={account.profileUrl} target="_blank" rel="noreferrer">
+            プロフィールを開く ↗
+          </a>
         )}
       </div>
     </div>

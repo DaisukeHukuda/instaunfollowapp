@@ -1,21 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import AccountCard from './AccountCard';
-import { bulkQueue, fetchAccounts, updateAccount } from './api';
-import type { AccountsResponse, AccountStatus } from './types';
+import { fetchAccounts } from './api';
+import type { AccountsResponse } from './types';
 
 const REL_TABS = [
-  { value: '', label: 'すべて' },
-  { value: 'followingOnly', label: '片思い' },
-  { value: 'followerOnly', label: 'ファン' },
+  { value: 'followingOnly', label: '片思い（外す候補）' },
   { value: 'mutual', label: '相互' },
-] as const;
-
-const STATUS_OPTIONS = [
-  { value: '', label: '全ステータス' },
-  { value: 'pending', label: '未処理' },
-  { value: 'unfollowed', label: 'フォロー解除済み' },
-  { value: 'followedBack', label: 'フォローバック済み' },
-  { value: 'keep', label: '残す' },
+  { value: 'followerOnly', label: 'ファン' },
+  { value: '', label: 'すべて' },
 ] as const;
 
 const SORT_OPTIONS = [
@@ -25,53 +17,60 @@ const SORT_OPTIONS = [
 ] as const;
 
 export default function ListView() {
-  const [relationship, setRelationship] = useState('');
-  const [status, setStatus] = useState('pending');
+  const [relationship, setRelationship] = useState('followingOnly');
   const [q, setQ] = useState('');
   const [sort, setSort] = useState('');
   const [data, setData] = useState<AccountsResponse | null>(null);
   const [error, setError] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [opened, setOpened] = useState<Set<string>>(new Set());
 
   const reload = useCallback(() => {
-    fetchAccounts({ relationship, status, q, sort })
+    fetchAccounts({ relationship, q, sort })
       .then((d) => {
         setData(d);
         setError('');
       })
       .catch((e: Error) => setError(e.message));
-  }, [relationship, status, q, sort]);
+  }, [relationship, q, sort]);
 
   useEffect(() => {
     reload();
   }, [reload]);
 
-  const onStatusChange = (username: string, newStatus: AccountStatus) => {
-    updateAccount(username, { status: newStatus })
-      .then(reload)
-      .catch((e: Error) => setError(e.message));
-  };
-
   const toggleSelect = (username: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(username)) {
-        next.delete(username);
-      } else {
-        next.add(username);
-      }
+      if (next.has(username)) next.delete(username);
+      else next.add(username);
       return next;
     });
   };
 
-  const enqueue = (usernames: string[]) => {
-    bulkQueue(usernames, true)
-      .then(() => {
-        setSelected(new Set());
-        reload();
-      })
-      .catch((e: Error) => setError(e.message));
+  const markOpened = (usernames: string[]) => {
+    setOpened((prev) => {
+      const next = new Set(prev);
+      usernames.forEach((u) => next.add(u));
+      return next;
+    });
   };
+
+  // 選択した（または1件の）プロフィールを新しいタブで開く。実際の解除はInstagram上で本人が行う。
+  const openProfiles = (usernames: string[]) => {
+    if (usernames.length === 0) return;
+    if (
+      usernames.length > 15 &&
+      !window.confirm(`${usernames.length}件のタブを一度に開きます。よろしいですか？`)
+    ) {
+      return;
+    }
+    for (const u of usernames) {
+      window.open(`https://www.instagram.com/${u}/`, '_blank', 'noopener,noreferrer');
+    }
+    markOpened(usernames);
+  };
+
+  const onOpen = (username: string) => openProfiles([username]);
 
   if (error) return <p className="error">{error}</p>;
   if (!data) return <p>読み込み中…</p>;
@@ -81,22 +80,22 @@ export default function ListView() {
     <div>
       <div className="summary">
         全{counts.total}件 ｜ 相互 {counts.mutual} ｜ 片思い {counts.followingOnly} ｜ ファン{' '}
-        {counts.followerOnly} ｜ 未処理 {counts.pending}
+        {counts.followerOnly}
       </div>
       <details className="list-help">
         <summary>💡 フォローの外し方（クリックで開く）</summary>
         <ul>
           <li>
-            <b>「片思い」</b>＝あなたはフォロー中だけど相手はフォローバックしていない人。フォロー整理の主な対象です。
+            <b>「片思い」</b>＝あなたはフォロー中だけど相手はフォローバックしていない人。整理の主な対象です。
           </li>
           <li>
-            カードの<b>「フォローを外す ↗」</b>を押すと、その人のInstagramプロフィールが新しいタブで開きます。
+            外したい人にチェックを入れ、上の<b>「選択した◯件のフォローを外す」</b>を押すと、その人たちのInstagramプロフィールが新しいタブでまとめて開きます（1件だけならカードの「フォローを外す ↗」でもOK）。
           </li>
           <li>
-            Instagram側で<b>「フォロー中」ボタンを押して解除</b>し、このアプリに戻って<b>「外した ✓」</b>を押すと記録されます。
+            開いた各タブでInstagramの<b>「フォロー中」ボタンを押して解除</b>してください。
           </li>
           <li>
-            ※ アプリが勝手にフォローを外すことはしません（規約・アカウント保護のため、実際の解除はあなたが行います）。
+            ※ アプリが自動でフォローを外すことはしません（規約・アカウント保護のため、実際の解除はあなたが行います）。次回エクスポートを取り込めば、実際に外れた人は自動で反映されます。
           </li>
         </ul>
       </details>
@@ -112,13 +111,6 @@ export default function ListView() {
             </button>
           ))}
         </div>
-        <select value={status} onChange={(e) => setStatus(e.target.value)}>
-          {STATUS_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
         <select value={sort} onChange={(e) => setSort(e.target.value)}>
           {SORT_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
@@ -128,24 +120,21 @@ export default function ListView() {
         </select>
         <input
           type="search"
-          placeholder="ユーザー名で検索"
+          placeholder="ユーザー名・名前・自己紹介で検索"
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
       </div>
       <div className="bulkbar">
         <span>選択中 {selected.size} 件</span>
-        <button disabled={selected.size === 0} onClick={() => enqueue([...selected])}>
-          選択をキューに入れる
-        </button>
         <button
-          disabled={data.accounts.length === 0}
-          onClick={() => enqueue(data.accounts.map((a) => a.username))}
+          className="btn-unfollow"
+          disabled={selected.size === 0}
+          onClick={() => openProfiles([...selected])}
         >
-          表示中の全{data.accounts.length}件をキューに入れる
+          選択した {selected.size} 件のフォローを外す ↗
         </button>
         {selected.size > 0 && <button onClick={() => setSelected(new Set())}>選択解除</button>}
-        <span className="queued-count">キュー: {counts.queued} 件</span>
       </div>
       {data.accounts.length === 0 ? (
         <p className="empty">
@@ -158,8 +147,9 @@ export default function ListView() {
               key={a.username}
               account={a}
               selected={selected.has(a.username)}
+              opened={opened.has(a.username)}
               onToggleSelect={toggleSelect}
-              onStatusChange={onStatusChange}
+              onOpen={onOpen}
             />
           ))}
         </div>

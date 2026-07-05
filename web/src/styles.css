@@ -36,7 +36,10 @@ input[type='search'] { flex: 1; min-width: 160px; }
 .badge-mutual { background: #1d3b2a; color: #6fd394; }
 .badge-followingOnly { background: #40301a; color: #f0b35e; }
 .badge-followerOnly { background: #1c3050; color: #7db2ff; }
-.bio { margin: 0; color: var(--muted); font-size: 13px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.bio { margin: 0; color: #b9c1cd; font-size: 13px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+.bio-empty { color: var(--muted); font-style: italic; }
+.card.opened { opacity: 0.5; }
+.badge-opened { background: #2f333c; color: #9aa3b2; }
 .card-meta { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; }
 .card-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .card-actions button, .btn { font-size: 13px; padding: 6px 10px; border-radius: 6px; background: var(--panel); border: 1px solid var(--border); color: var(--text); text-decoration: none; cursor: pointer; }
