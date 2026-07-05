@@ -13,8 +13,8 @@ const REL_TABS = [
 const STATUS_OPTIONS = [
   { value: '', label: '全ステータス' },
   { value: 'pending', label: '未処理' },
-  { value: 'unfollowed', label: 'アンフォロー済み' },
-  { value: 'followedBack', label: 'フォローした' },
+  { value: 'unfollowed', label: 'フォロー解除済み' },
+  { value: 'followedBack', label: 'フォローバック済み' },
   { value: 'keep', label: '残す' },
 ] as const;
 
@@ -83,6 +83,23 @@ export default function ListView() {
         全{counts.total}件 ｜ 相互 {counts.mutual} ｜ 片思い {counts.followingOnly} ｜ ファン{' '}
         {counts.followerOnly} ｜ 未処理 {counts.pending}
       </div>
+      <details className="list-help">
+        <summary>💡 フォローの外し方（クリックで開く）</summary>
+        <ul>
+          <li>
+            <b>「片思い」</b>＝あなたはフォロー中だけど相手はフォローバックしていない人。フォロー整理の主な対象です。
+          </li>
+          <li>
+            カードの<b>「フォローを外す ↗」</b>を押すと、その人のInstagramプロフィールが新しいタブで開きます。
+          </li>
+          <li>
+            Instagram側で<b>「フォロー中」ボタンを押して解除</b>し、このアプリに戻って<b>「外した ✓」</b>を押すと記録されます。
+          </li>
+          <li>
+            ※ アプリが勝手にフォローを外すことはしません（規約・アカウント保護のため、実際の解除はあなたが行います）。
+          </li>
+        </ul>
+      </details>
       <div className="filters">
         <div className="rel-tabs">
           {REL_TABS.map((t) => (

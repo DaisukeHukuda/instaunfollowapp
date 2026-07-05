@@ -9,6 +9,13 @@ const REL_LABEL: Record<Account['relationship'], string> = {
   followerOnly: 'ファン',
 };
 
+function relFlags(rel: Account['relationship']) {
+  return {
+    youFollow: rel === 'mutual' || rel === 'followingOnly',
+    followsYou: rel === 'mutual' || rel === 'followerOnly',
+  };
+}
+
 const fmtDate = (iso: string | null): string =>
   iso ? new Date(iso).toLocaleDateString('ja-JP') : '—';
 
@@ -79,11 +86,17 @@ export default function QueueView() {
   }
 
   const { username, relationship, profile } = current;
+  const { youFollow, followsYou } = relFlags(relationship);
   return (
     <div className="queue-view">
       <div className="queue-progress">
         残り {queue.length} 件{done > 0 && ` ｜ 処理済み ${done} 件`}
       </div>
+      <p className="queue-help">
+        {youFollow
+          ? '「フォローを外す（O）」でこの人のプロフィールが開きます。Instagram上で「フォロー中」を押して解除 →このアプリに戻って「外した（U）」を押すと記録されます。'
+          : 'この人はあなたをフォローしていますが、あなたはフォローしていません。フォローバックするなら「開く（O）」→ Instagramでフォロー →「フォローした（F）」。'}
+      </p>
       <div className="queue-card">
         <div className="card-head">
           {profile?.picPath ? (
@@ -99,17 +112,28 @@ export default function QueueView() {
           </div>
           <span className={`badge badge-${relationship}`}>{REL_LABEL[relationship]}</span>
         </div>
+        <div className="rel-row">
+          <span className={`relpill ${youFollow ? 'on-you' : 'off'}`}>
+            {youFollow ? '✓ あなたがフォロー中' : '✗ あなたは未フォロー'}
+          </span>
+          <span className={`relpill ${followsYou ? 'on-them' : 'off'}`}>
+            {followsYou ? '✓ 相手もあなたをフォロー' : '✗ 相手はフォローしていない'}
+          </span>
+        </div>
         {profile?.bio && <p className="bio">{profile.bio}</p>}
         <div className="card-meta">
           <span>フォロー日: {fmtDate(current.followedAt)}</span>
+          {profile?.followerCount != null && (
+            <span>フォロワー {profile.followerCount.toLocaleString()}</span>
+          )}
         </div>
         <div className="queue-actions">
-          <button onClick={open}>
-            開く<span className="kbd">O</span>
+          <button className="btn-open" onClick={open}>
+            {youFollow ? 'フォローを外す' : '開く'} ↗<span className="kbd">O</span>
           </button>
           {relationship !== 'followerOnly' ? (
-            <button onClick={() => resolve('unfollowed')}>
-              アンフォロー済み<span className="kbd">U</span>
+            <button className="btn-unfollow" onClick={() => resolve('unfollowed')}>
+              外した<span className="kbd">U</span>
             </button>
           ) : (
             <button onClick={() => resolve('followedBack')}>
