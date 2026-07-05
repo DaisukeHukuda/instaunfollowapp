@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import AccountCard from './AccountCard';
-import { fetchAccounts } from './api';
+import { fetchAccounts, updateAccount } from './api';
 import type { AccountsResponse } from './types';
 
 const REL_TABS = [
@@ -23,7 +23,7 @@ export default function ListView() {
   const [data, setData] = useState<AccountsResponse | null>(null);
   const [error, setError] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [opened, setOpened] = useState<Set<string>>(new Set());
+  const [showDone, setShowDone] = useState(false);
 
   const reload = useCallback(() => {
     fetchAccounts({ relationship, q, sort })
@@ -47,12 +47,16 @@ export default function ListView() {
     });
   };
 
-  const markOpened = (usernames: string[]) => {
-    setOpened((prev) => {
-      const next = new Set(prev);
-      usernames.forEach((u) => next.add(u));
-      return next;
-    });
+  const markDone = (username: string) => {
+    updateAccount(username, { status: 'unfollowed' })
+      .then(reload)
+      .catch((e: Error) => setError(e.message));
+  };
+
+  const restore = (username: string) => {
+    updateAccount(username, { status: 'pending' })
+      .then(reload)
+      .catch((e: Error) => setError(e.message));
   };
 
   // 選択した（または1件の）プロフィールを新しいタブで開く。実際の解除はInstagram上で本人が行う。
@@ -67,15 +71,26 @@ export default function ListView() {
     for (const u of usernames) {
       window.open(`https://www.instagram.com/${u}/`, '_blank', 'noopener,noreferrer');
     }
-    markOpened(usernames);
   };
 
   const onOpen = (username: string) => openProfiles([username]);
+
+  const markSelectedDone = () => {
+    const names = [...selected];
+    Promise.all(names.map((u) => updateAccount(u, { status: 'unfollowed' })))
+      .then(() => {
+        setSelected(new Set());
+        reload();
+      })
+      .catch((e: Error) => setError(e.message));
+  };
 
   if (error) return <p className="error">{error}</p>;
   if (!data) return <p>読み込み中…</p>;
 
   const { counts } = data;
+  const doneCount = data.accounts.filter((a) => a.status === 'unfollowed').length;
+  const visible = showDone ? data.accounts : data.accounts.filter((a) => a.status !== 'unfollowed');
   return (
     <div>
       <div className="summary">
@@ -83,19 +98,19 @@ export default function ListView() {
         {counts.followerOnly}
       </div>
       <details className="list-help">
-        <summary>💡 フォローの外し方（クリックで開く）</summary>
+        <summary>💡 使い方・一覧の更新（クリックで開く）</summary>
         <ul>
           <li>
             <b>「片思い」</b>＝あなたはフォロー中だけど相手はフォローバックしていない人。整理の主な対象です。
           </li>
           <li>
-            外したい人にチェックを入れ、上の<b>「選択した◯件のフォローを外す」</b>を押すと、その人たちのInstagramプロフィールが新しいタブでまとめて開きます（1件だけならカードの「フォローを外す ↗」でもOK）。
+            チェックを入れて上の<b>「選択した◯件のフォローを外す」</b>で、その人たちのInstagramをまとめて開けます（1件ならカードの「フォローを外す ↗」）。各タブで「フォロー中」を押して解除してください。
           </li>
           <li>
-            開いた各タブでInstagramの<b>「フォロー中」ボタンを押して解除</b>してください。
+            外し終わった人はカードの<b>「外した（消す）」</b>を押すと、この一覧から消えます（間違えたら「処理済みも表示」→「一覧に戻す」で戻せます）。
           </li>
           <li>
-            ※ アプリが自動でフォローを外すことはしません（規約・アカウント保護のため、実際の解除はあなたが行います）。次回エクスポートを取り込めば、実際に外れた人は自動で反映されます。
+            後日あらためて新しいエクスポートZIPを「取り込み」タブに入れると、実際のフォロー状況で全体が正確に更新されます。
           </li>
         </ul>
       </details>
@@ -134,22 +149,36 @@ export default function ListView() {
         >
           選択した {selected.size} 件のフォローを外す ↗
         </button>
+        {selected.size > 0 && (
+          <button onClick={markSelectedDone}>選択を「外した」にして消す</button>
+        )}
         {selected.size > 0 && <button onClick={() => setSelected(new Set())}>選択解除</button>}
+        {doneCount > 0 && (
+          <label className="done-toggle">
+            <input
+              type="checkbox"
+              checked={showDone}
+              onChange={(e) => setShowDone(e.target.checked)}
+            />
+            処理済みも表示（{doneCount}）
+          </label>
+        )}
       </div>
-      {data.accounts.length === 0 ? (
+      {visible.length === 0 ? (
         <p className="empty">
           該当するアカウントがありません。まだ取り込んでいない場合は「取り込み」タブからエクスポートZIPを読み込んでください。
         </p>
       ) : (
         <div className="grid">
-          {data.accounts.map((a) => (
+          {visible.map((a) => (
             <AccountCard
               key={a.username}
               account={a}
               selected={selected.has(a.username)}
-              opened={opened.has(a.username)}
               onToggleSelect={toggleSelect}
               onOpen={onOpen}
+              onMarkDone={markDone}
+              onRestore={restore}
             />
           ))}
         </div>

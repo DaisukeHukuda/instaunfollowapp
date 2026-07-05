@@ -21,17 +21,26 @@ const fmtDate = (iso: string | null): string =>
 interface Props {
   account: Account;
   selected: boolean;
-  opened: boolean;
   onToggleSelect: (username: string) => void;
   onOpen: (username: string) => void;
+  onMarkDone: (username: string) => void;
+  onRestore: (username: string) => void;
 }
 
-export default function AccountCard({ account, selected, opened, onToggleSelect, onOpen }: Props) {
+export default function AccountCard({
+  account,
+  selected,
+  onToggleSelect,
+  onOpen,
+  onMarkDone,
+  onRestore,
+}: Props) {
   const { username, relationship, profile } = account;
   const name = profile?.displayName || username;
   const { youFollow, followsYou } = relFlags(relationship);
+  const isDone = account.status === 'unfollowed';
   return (
-    <div className={`card${opened ? ' opened' : ''}`}>
+    <div className={`card${isDone ? ' done' : ''}`}>
       <div className="card-head">
         <input
           type="checkbox"
@@ -51,7 +60,7 @@ export default function AccountCard({ account, selected, opened, onToggleSelect,
           {profile?.displayName && <div className="display-name">{name}</div>}
         </div>
         <span className={`badge badge-${relationship}`}>{REL_LABEL[relationship]}</span>
-        {opened && <span className="badge badge-opened">開いた</span>}
+        {isDone && <span className="badge badge-opened">外した</span>}
       </div>
 
       <div className="rel-row">
@@ -76,10 +85,15 @@ export default function AccountCard({ account, selected, opened, onToggleSelect,
       </div>
 
       <div className="card-actions">
-        {youFollow ? (
-          <button className="btn-unfollow" onClick={() => onOpen(username)}>
-            フォローを外す ↗
-          </button>
+        {isDone ? (
+          <button onClick={() => onRestore(username)}>一覧に戻す</button>
+        ) : youFollow ? (
+          <>
+            <button className="btn-unfollow" onClick={() => onOpen(username)}>
+              フォローを外す ↗
+            </button>
+            <button onClick={() => onMarkDone(username)}>外した（消す）</button>
+          </>
         ) : (
           <a className="btn" href={account.profileUrl} target="_blank" rel="noreferrer">
             プロフィールを開く ↗
