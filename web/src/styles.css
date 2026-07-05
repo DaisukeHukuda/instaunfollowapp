@@ -42,6 +42,8 @@ input[type='search'] { flex: 1; min-width: 160px; }
 .badge-opened { background: #2f333c; color: #9aa3b2; }
 .done-toggle { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-size: 13px; cursor: pointer; }
 .done-toggle input { accent-color: var(--accent); }
+.badge-gone { background: #4a3a1c; color: #e0b35e; }
+.gone-note { color: var(--muted); font-size: 12px; align-self: center; }
 .card-meta { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; }
 .card-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .card-actions button, .btn { font-size: 13px; padding: 6px 10px; border-radius: 6px; background: var(--panel); border: 1px solid var(--border); color: var(--text); text-decoration: none; cursor: pointer; }

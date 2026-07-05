@@ -24,6 +24,7 @@ export default function ListView() {
   const [error, setError] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showDone, setShowDone] = useState(false);
+  const [hideGone, setHideGone] = useState(true);
 
   const reload = useCallback(() => {
     fetchAccounts({ relationship, q, sort })
@@ -90,7 +91,13 @@ export default function ListView() {
 
   const { counts } = data;
   const doneCount = data.accounts.filter((a) => a.status === 'unfollowed').length;
-  const visible = showDone ? data.accounts : data.accounts.filter((a) => a.status !== 'unfollowed');
+  const goneCount = data.accounts.filter(
+    (a) => a.profile?.fetchError && a.status !== 'unfollowed',
+  ).length;
+  const visible = data.accounts.filter(
+    (a) =>
+      (showDone || a.status !== 'unfollowed') && (!hideGone || !a.profile?.fetchError),
+  );
   return (
     <div>
       <div className="summary">
@@ -161,6 +168,16 @@ export default function ListView() {
               onChange={(e) => setShowDone(e.target.checked)}
             />
             処理済みも表示（{doneCount}）
+          </label>
+        )}
+        {goneCount > 0 && (
+          <label className="done-toggle">
+            <input
+              type="checkbox"
+              checked={hideGone}
+              onChange={(e) => setHideGone(e.target.checked)}
+            />
+            退会・削除などを隠す（{goneCount}）
           </label>
         )}
       </div>

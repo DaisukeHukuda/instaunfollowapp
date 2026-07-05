@@ -39,6 +39,8 @@ export default function AccountCard({
   const name = profile?.displayName || username;
   const { youFollow, followsYou } = relFlags(relationship);
   const isDone = account.status === 'unfollowed';
+  // プロフィール取得で「存在しない」等になった＝退会・削除の可能性が高く、開いても外せない
+  const gone = !!profile?.fetchError;
   return (
     <div className={`card${isDone ? ' done' : ''}`}>
       <div className="card-head">
@@ -60,6 +62,7 @@ export default function AccountCard({
           {profile?.displayName && <div className="display-name">{name}</div>}
         </div>
         <span className={`badge badge-${relationship}`}>{REL_LABEL[relationship]}</span>
+        {gone && <span className="badge badge-gone">退会・削除など</span>}
         {isDone && <span className="badge badge-opened">外した</span>}
       </div>
 
@@ -87,6 +90,11 @@ export default function AccountCard({
       <div className="card-actions">
         {isDone ? (
           <button onClick={() => onRestore(username)}>一覧に戻す</button>
+        ) : gone ? (
+          <>
+            <span className="gone-note">退会・削除などで開けません</span>
+            <button onClick={() => onMarkDone(username)}>一覧から消す</button>
+          </>
         ) : youFollow ? (
           <>
             <button className="btn-unfollow" onClick={() => onOpen(username)}>
