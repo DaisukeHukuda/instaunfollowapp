@@ -25,6 +25,7 @@ export default function ListView() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showDone, setShowDone] = useState(false);
   const [hideGone, setHideGone] = useState(true);
+  const [notice, setNotice] = useState('');
 
   const reload = useCallback(() => {
     fetchAccounts({ relationship, q, sort })
@@ -69,8 +70,18 @@ export default function ListView() {
     ) {
       return;
     }
+    let blocked = 0;
     for (const u of usernames) {
-      window.open(`https://www.instagram.com/${u}/`, '_blank', 'noopener,noreferrer');
+      const w = window.open(`https://www.instagram.com/${u}/`, '_blank');
+      if (!w) blocked++;
+    }
+    if (blocked > 0) {
+      setNotice(
+        `${usernames.length}件のうち${blocked}件が、ブラウザのポップアップブロックで開けませんでした。` +
+          `アドレスバー右側のブロック通知アイコンをクリックし、「${location.host} のポップアップとリダイレクトを常に許可する」を選んでから、もう一度ボタンを押してください。`,
+      );
+    } else {
+      setNotice('');
     }
   };
 
@@ -181,6 +192,11 @@ export default function ListView() {
           </label>
         )}
       </div>
+      {notice && (
+        <p className="notice">
+          {notice} <button className="notice-close" onClick={() => setNotice('')}>×</button>
+        </p>
+      )}
       {visible.length === 0 ? (
         <p className="empty">
           該当するアカウントがありません。まだ取り込んでいない場合は「取り込み」タブからエクスポートZIPを読み込んでください。

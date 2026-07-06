@@ -44,6 +44,8 @@ input[type='search'] { flex: 1; min-width: 160px; }
 .done-toggle input { accent-color: var(--accent); }
 .badge-gone { background: #4a3a1c; color: #e0b35e; }
 .gone-note { color: var(--muted); font-size: 12px; align-self: center; }
+.notice { background: #40301a; border: 1px solid #7a5a2a; color: #f0d0a0; border-radius: 8px; padding: 10px 12px; font-size: 13px; line-height: 1.6; margin-bottom: 12px; }
+.notice-close { background: none; border: none; color: #f0d0a0; cursor: pointer; font-size: 16px; padding: 0 4px; }
 .card-meta { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; }
 .card-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .card-actions button, .btn { font-size: 13px; padding: 6px 10px; border-radius: 6px; background: var(--panel); border: 1px solid var(--border); color: var(--text); text-decoration: none; cursor: pointer; }
