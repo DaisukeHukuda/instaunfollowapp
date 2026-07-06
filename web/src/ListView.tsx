@@ -108,15 +108,21 @@ export default function ListView() {
     (a) => (showDone || !isHandled(a.status)) && (!hideGone || !a.profile?.fetchError),
   );
 
-  // チェック選択。Shift+クリックで直前クリックからの範囲をまとめて選択する。
+  // チェック選択。Shift+クリックは起点（直前クリック）の状態に範囲をそろえる
+  // （起点が選択中なら範囲を選択、起点が未選択なら範囲を解除）。
   const handleSelect = (index: number, shiftKey: boolean) => {
     const anchor = anchorRef.current; // 更新関数の実行前に確定させる
     setSelected((prev) => {
       const next = new Set(prev);
       if (shiftKey && anchor !== null && anchor < visible.length) {
+        const target = next.has(visible[anchor].username); // 起点の現在の選択状態
         const lo = Math.min(anchor, index);
         const hi = Math.max(anchor, index);
-        for (let i = lo; i <= hi; i++) next.add(visible[i].username);
+        for (let i = lo; i <= hi; i++) {
+          const u = visible[i].username;
+          if (target) next.add(u);
+          else next.delete(u);
+        }
       } else {
         const u = visible[index].username;
         if (next.has(u)) next.delete(u);
