@@ -55,6 +55,12 @@ export default function ListView() {
       .catch((e: Error) => setError(e.message));
   };
 
+  const markKeep = (username: string) => {
+    updateAccount(username, { status: 'keep' })
+      .then(reload)
+      .catch((e: Error) => setError(e.message));
+  };
+
   const restore = (username: string) => {
     updateAccount(username, { status: 'pending' })
       .then(reload)
@@ -87,9 +93,9 @@ export default function ListView() {
 
   const onOpen = (username: string) => openProfiles([username]);
 
-  const markSelectedDone = () => {
+  const markSelected = (status: 'unfollowed' | 'keep') => {
     const names = [...selected];
-    Promise.all(names.map((u) => updateAccount(u, { status: 'unfollowed' })))
+    Promise.all(names.map((u) => updateAccount(u, { status })))
       .then(() => {
         setSelected(new Set());
         reload();
@@ -101,13 +107,13 @@ export default function ListView() {
   if (!data) return <p>読み込み中…</p>;
 
   const { counts } = data;
-  const doneCount = data.accounts.filter((a) => a.status === 'unfollowed').length;
+  const isHandled = (s: string) => s === 'unfollowed' || s === 'keep';
+  const handledCount = data.accounts.filter((a) => isHandled(a.status)).length;
   const goneCount = data.accounts.filter(
-    (a) => a.profile?.fetchError && a.status !== 'unfollowed',
+    (a) => a.profile?.fetchError && !isHandled(a.status),
   ).length;
   const visible = data.accounts.filter(
-    (a) =>
-      (showDone || a.status !== 'unfollowed') && (!hideGone || !a.profile?.fetchError),
+    (a) => (showDone || !isHandled(a.status)) && (!hideGone || !a.profile?.fetchError),
   );
   return (
     <div>
@@ -125,7 +131,7 @@ export default function ListView() {
             チェックを入れて上の<b>「選択した◯件のフォローを外す」</b>で、その人たちのInstagramをまとめて開けます（1件ならカードの「フォローを外す ↗」）。各タブで「フォロー中」を押して解除してください。
           </li>
           <li>
-            外し終わった人はカードの<b>「外した（消す）」</b>を押すと、この一覧から消えます（間違えたら「処理済みも表示」→「一覧に戻す」で戻せます）。
+            外し終わった人はカードの<b>「外した（消す）」</b>、フォローを続けたい人は<b>「残す（隠す）」</b>を押すと、この一覧から消えます（チェックして一括で「外した/残す」にもできます）。間違えたら「処理済み（外した/残す）も表示」→「一覧に戻す」で戻せます。
           </li>
           <li>
             後日あらためて新しいエクスポートZIPを「取り込み」タブに入れると、実際のフォロー状況で全体が正確に更新されます。
@@ -168,17 +174,20 @@ export default function ListView() {
           選択した {selected.size} 件のフォローを外す ↗
         </button>
         {selected.size > 0 && (
-          <button onClick={markSelectedDone}>選択を「外した」にして消す</button>
+          <button onClick={() => markSelected('unfollowed')}>選択を「外した」にして消す</button>
+        )}
+        {selected.size > 0 && (
+          <button onClick={() => markSelected('keep')}>選択を「残す」にして隠す</button>
         )}
         {selected.size > 0 && <button onClick={() => setSelected(new Set())}>選択解除</button>}
-        {doneCount > 0 && (
+        {handledCount > 0 && (
           <label className="done-toggle">
             <input
               type="checkbox"
               checked={showDone}
               onChange={(e) => setShowDone(e.target.checked)}
             />
-            処理済みも表示（{doneCount}）
+            処理済み（外した/残す）も表示（{handledCount}）
           </label>
         )}
         {goneCount > 0 && (
@@ -211,6 +220,7 @@ export default function ListView() {
               onToggleSelect={toggleSelect}
               onOpen={onOpen}
               onMarkDone={markDone}
+              onKeep={markKeep}
               onRestore={restore}
             />
           ))}
