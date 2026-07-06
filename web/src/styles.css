@@ -76,7 +76,7 @@ input[type='search'] { flex: 1; min-width: 160px; }
 
 .bulkbar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; color: var(--muted); font-size: 13px; flex-wrap: wrap; }
 .badge-queued { background: #3a2a4a; color: #c99cff; }
-.select-box { width: 16px; height: 16px; accent-color: var(--accent); flex-shrink: 0; }
+.select-box { width: 26px; height: 26px; accent-color: var(--accent); flex-shrink: 0; cursor: pointer; }
 .queued-count { margin-left: auto; }
 
 .queue-view { max-width: 640px; margin: 0 auto; }
