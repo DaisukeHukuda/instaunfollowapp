@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import AccountCard from './AccountCard';
 import { fetchAccounts, updateAccount } from './api';
 import type { AccountsResponse } from './types';
@@ -26,6 +26,7 @@ export default function ListView() {
   const [showDone, setShowDone] = useState(false);
   const [hideGone, setHideGone] = useState(true);
   const [notice, setNotice] = useState('');
+  const anchorRef = useRef<number | null>(null);
 
   const reload = useCallback(() => {
     fetchAccounts({ relationship, q, sort })
@@ -39,15 +40,6 @@ export default function ListView() {
   useEffect(() => {
     reload();
   }, [reload]);
-
-  const toggleSelect = (username: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(username)) next.delete(username);
-      else next.add(username);
-      return next;
-    });
-  };
 
   const markDone = (username: string) => {
     updateAccount(username, { status: 'unfollowed' })
@@ -115,6 +107,26 @@ export default function ListView() {
   const visible = data.accounts.filter(
     (a) => (showDone || !isHandled(a.status)) && (!hideGone || !a.profile?.fetchError),
   );
+
+  // チェック選択。Shift+クリックで直前クリックからの範囲をまとめて選択する。
+  const handleSelect = (index: number, shiftKey: boolean) => {
+    const anchor = anchorRef.current; // 更新関数の実行前に確定させる
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (shiftKey && anchor !== null && anchor < visible.length) {
+        const lo = Math.min(anchor, index);
+        const hi = Math.max(anchor, index);
+        for (let i = lo; i <= hi; i++) next.add(visible[i].username);
+      } else {
+        const u = visible[index].username;
+        if (next.has(u)) next.delete(u);
+        else next.add(u);
+      }
+      return next;
+    });
+    anchorRef.current = index;
+  };
+
   return (
     <div>
       <div className="summary">
@@ -128,7 +140,7 @@ export default function ListView() {
             <b>「片思い」</b>＝あなたはフォロー中だけど相手はフォローバックしていない人。整理の主な対象です。
           </li>
           <li>
-            チェックを入れて上の<b>「選択した◯件のフォローを外す」</b>で、その人たちのInstagramをまとめて開けます（1件ならカードの「フォローを外す ↗」）。各タブで「フォロー中」を押して解除してください。
+            チェックを入れて上の<b>「選択した◯件のフォローを外す」</b>で、その人たちのInstagramをまとめて開けます（1件ならカードの「フォローを外す ↗」）。各タブで「フォロー中」を押して解除してください。<b>チェックはShift+クリックで範囲選択</b>できます（1件目を押し、離れた所をShift+クリックすると間が全部選択）。
           </li>
           <li>
             外し終わった人はカードの<b>「外した（消す）」</b>、フォローを続けたい人は<b>「残す（隠す）」</b>を押すと、この一覧から消えます（チェックして一括で「外した/残す」にもできます）。間違えたら「処理済み（外した/残す）も表示」→「一覧に戻す」で戻せます。
@@ -212,12 +224,13 @@ export default function ListView() {
         </p>
       ) : (
         <div className="grid">
-          {visible.map((a) => (
+          {visible.map((a, i) => (
             <AccountCard
               key={a.username}
               account={a}
+              index={i}
               selected={selected.has(a.username)}
-              onToggleSelect={toggleSelect}
+              onSelect={handleSelect}
               onOpen={onOpen}
               onMarkDone={markDone}
               onKeep={markKeep}

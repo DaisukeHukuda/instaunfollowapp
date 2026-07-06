@@ -20,8 +20,9 @@ const fmtDate = (iso: string | null): string =>
 
 interface Props {
   account: Account;
+  index: number;
   selected: boolean;
-  onToggleSelect: (username: string) => void;
+  onSelect: (index: number, shiftKey: boolean) => void;
   onOpen: (username: string) => void;
   onMarkDone: (username: string) => void;
   onKeep: (username: string) => void;
@@ -30,8 +31,9 @@ interface Props {
 
 export default function AccountCard({
   account,
+  index,
   selected,
-  onToggleSelect,
+  onSelect,
   onOpen,
   onMarkDone,
   onKeep,
@@ -52,7 +54,9 @@ export default function AccountCard({
           type="checkbox"
           className="select-box"
           checked={selected}
-          onChange={() => onToggleSelect(username)}
+          onChange={() => {}}
+          onClick={(e) => onSelect(index, e.shiftKey)}
+          title="Shift+クリックで範囲選択"
         />
         {profile?.picPath ? (
           <img className="avatar" src={profile.picPath} alt="" />
